@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>콘크리트 배합설계 계산기 (한 번에 풀이)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="lib/html2canvas.min.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
+<style>
+  :root{--bg:#f3f3f1;--panel:#fff;--ink:#1c1c1c;--muted:#6b6b6b;--line:#d6d6d2;--soft:#ededea;--grid:#ebebe8;--warn:#8a1c1c}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans KR",system-ui,sans-serif;font-size:15px;line-height:1.6;font-variant-numeric:tabular-nums}
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding:14px 18px 0}
+  header h1{margin:0 0 10px;font-size:17px}
+  .prog{display:flex;gap:5px;overflow-x:auto;padding-bottom:12px}
+  .prog button{flex:0 0 auto;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:999px;padding:4px 11px;font:inherit;font-size:12.5px;cursor:pointer;white-space:nowrap}
+  .prog button.done{color:var(--ink);border-color:#b8b8b4}
+  .prog button.cur{background:var(--ink);color:#fff;border-color:var(--ink)}
+  main{max-width:900px;margin:0 auto;padding:16px 14px 110px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  .card h2{margin:0 0 8px;font-size:16px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
+  @media (max-width:560px){.grid2{grid-template-columns:1fr}}
+  label.f{display:flex;flex-direction:column;font-size:12.5px;color:var(--muted);margin-bottom:10px}
+  label.f input,label.f select{margin-top:3px;padding:8px 9px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:15px;color:var(--ink);background:#fff}
+  .chk{display:flex;align-items:center;gap:8px;font-size:14px;margin:2px 0 10px;cursor:pointer;font-weight:500}
+  .hint{font-size:12px;color:var(--muted);margin:-4px 0 10px}
+  .expo{max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+  .expo .cat{position:sticky;top:0;background:var(--soft);font-size:12px;font-weight:700;padding:5px 10px;border-bottom:1px solid var(--line);z-index:1}
+  .expo label{display:grid;grid-template-columns:20px 40px 1fr;gap:6px;padding:8px 10px;border-bottom:1px solid var(--soft);cursor:pointer;font-size:13px}
+  .expo label.on{background:#e2e2de}
+  .expo .gg{font-weight:700;font-size:12.5px}
+  .expo .ex{display:block;color:var(--muted);font-size:11.5px}
+  .search{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:14px;margin-bottom:8px}
+  .topbtns{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  button.b{font:inherit;font-size:14px;padding:8px 14px;border-radius:7px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer}
+  button.b.ghost{background:#fff;color:var(--ink)}
+  button.b:disabled{opacity:.35;cursor:default}
+  .err{color:var(--warn);font-weight:700}
+
+  /* ---------- note (grid paper) ---------- */
+  .stitle{font-size:20px;font-weight:700;margin:2px 0 2px}
+  .ssub{font-size:12.5px;color:var(--muted);margin-bottom:12px}
+  .note{background-color:#fff;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:26px 26px;border:1px solid var(--line);border-radius:10px;padding:18px 20px 20px;overflow-x:auto}
+  .eq{font-size:16px;line-height:2.05;white-space:normal}
+  .eq.i1{padding-left:26px}.eq.i2{padding-left:52px}
+  .eq.g{font-size:13px;color:var(--muted);line-height:1.6;margin:-2px 0 4px}
+  .eq.h{font-weight:700;margin-top:10px}
+  .u{font-weight:700;border-bottom:2px solid var(--ink);padding:0 2px 1px}
+  .op{color:var(--muted)}
+  .gap{height:10px}
+  table.ct{border-collapse:collapse;margin:6px 0 8px;font-size:15px;background:rgba(255,255,255,.85)}
+  table.ct th{font-weight:500;color:var(--muted);font-size:13.5px;padding:4px 14px;border-bottom:1.5px solid var(--ink);text-align:center}
+  table.ct td{padding:5px 14px;text-align:center;border-bottom:1px solid var(--grid);white-space:nowrap}
+  table.ct td.k{text-align:left;font-weight:500;padding-left:4px}
+  table.ct td.x{color:#9a9a96}
+  table.ct tr.sum td{border-top:1.5px solid var(--ink);font-weight:700}
+  .sumbox{display:flex;align-items:center;gap:14px;margin:14px 0 2px;flex-wrap:wrap}
+  .sumbox .arr{font-size:22px}
+  .sumbox .lbl{font-size:13px;color:var(--muted);margin-right:-4px}
+  .sumbox table{border-collapse:collapse;background:#fff}
+  .sumbox th,.sumbox td{padding:3px 18px;text-align:center;border-left:2px solid var(--ink)}
+  .sumbox th:first-child,.sumbox td:first-child{border-left:none}
+  .sumbox th{font-weight:500;font-size:14px}
+  .sumbox td{font-size:19px;font-weight:700}
+  .skip{font-size:14px;color:var(--muted);background:var(--soft);border-radius:8px;padding:10px 14px;margin-bottom:6px}
+  .prev{font-size:13px;color:var(--muted);margin-bottom:6px}
+  table.rt{border-collapse:collapse;width:100%;font-size:13px;margin-top:6px}
+  table.rt th,table.rt td{border:1px solid var(--line);padding:5px 7px;text-align:center}
+  table.rt th{background:var(--soft);font-weight:500}
+  table.rt td.k{text-align:left}
+
+  nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:10px 14px}
+  nav.bottom .in{max-width:900px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  nav.bottom .pos{font-size:13px;color:var(--muted)}
+  .hidden{display:none!important}
+  .frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 3px;line-height:1.35}
+  .frac>span{padding:0 4px;white-space:nowrap}
+  .frac>span:first-child{border-bottom:1.5px solid var(--ink)}
+  .eq.fr{line-height:1.5;padding:7px 0}
+  .mtcap{font-weight:700;margin:12px 0 4px;font-size:14px}
+  .mtwrap{overflow-x:auto;background:#fff}
+  table.mt{border-collapse:collapse;width:100%;min-width:640px;background:#fff;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
+  table.mt th{background:#e6e6e2;font-weight:500;font-size:13px;padding:6px 5px;border:1px solid #a3a39f;line-height:1.35;text-align:center}
+  table.mt td{padding:10px 5px;border:1px solid #a3a39f;text-align:center;font-size:16px;font-weight:600;white-space:nowrap}
+  .mtnote{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6}
+
+</style>
+<style>
+  .stepsec{margin-bottom:26px;scroll-margin-top:110px}
+  .stepsec .pinfo{font-size:13px;color:var(--muted);margin:-6px 0 10px}
+  .topinfo{font-size:13px;color:var(--muted);margin-bottom:14px}
+  header{position:sticky;top:0;z-index:5}
+  .card h2 small{font-weight:400;color:var(--muted);font-size:12.5px;margin-left:6px}
+  .divider{border-top:1px dashed var(--line);margin:8px 0 12px}
+  .pdfhead{padding:4px 2px 14px;border-bottom:2px solid var(--ink);margin-bottom:18px}
+  .pdfhead .t{font-size:22px;font-weight:700}
+  .pdfhead .c{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.7}
+  .toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:8px;font-size:13.5px;z-index:20;max-width:90vw;text-align:center}
+  nav.bottom .rt{display:flex;gap:6px}
+  @media (max-width:600px){ nav.bottom .pos{display:none} button.b{padding:8px 10px;font-size:13px} }
+  .overlay{position:fixed;inset:0;background:#e9e9e6;z-index:30;overflow:auto;-webkit-overflow-scrolling:touch}
+  .ovhead{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);padding:12px 14px;display:flex;gap:12px;align-items:flex-start;justify-content:space-between;z-index:1}
+  .ovhead button{white-space:nowrap;flex:0 0 auto}
+  #txtArea{width:100%;height:calc(100vh - 150px);font-family:ui-monospace,Menlo,monospace;font-size:13.5px;line-height:1.6;border:1px solid var(--line);border-radius:8px;padding:12px;background:#fff;color:var(--ink);resize:none;-webkit-user-select:text;user-select:text}
+  .ovhint{font-size:13px;color:var(--muted);margin-top:2px;line-height:1.55}
+  #imgs{padding:14px}
+  #imgs img{display:block;width:100%;max-width:820px;margin:0 auto 18px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15);-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
+  .pgno{max-width:820px;margin:0 auto 4px;font-size:12px;color:var(--muted)}
+  @media (max-width:600px){
+    .eq{font-size:14.5px;line-height:1.9}
+    .note{padding:14px 12px}
+    table.ct td,table.ct th{padding:4px 7px;font-size:13.5px}
+    .sumbox th,.sumbox td{padding:3px 12px}
+    .stitle{font-size:18px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>콘크리트 배합설계 계산기 · 한 번에 풀이</h1>
+  <div class="prog" id="prog"></div>
+</header>
+
+<main>
+<!-- ================= 입력 (모든 조건) ================= -->
+<section id="page0">
+  <div class="topinfo">모든 조건을 입력하고 아래의 <b>풀이 시작</b>을 누르면 Step 1~7 풀이가 한 페이지에 나옵니다.</div>
+  <div class="topbtns">
+    <button class="b ghost" id="btnEx">강의 예제 값 불러오기</button>
+    <button class="b ghost" id="btnClear">전체 지우기</button>
+  </div>
+
+  <div class="card">
+    <h2>① 노출등급 <small>문제의 조건 문장과 같은 것을 선택</small></h2>
+    <input class="search" id="expoSearch" placeholder="조건 문장 일부로 찾기 (예: 동결융해, 염화물, 해수)">
+    <div class="expo" id="expoList"></div>
+  </div>
+
+  <div class="card">
+    <h2>② 강도 조건</h2>
+    <div class="grid2">
+      <label class="f">설계기준강도 f_ck (MPa)<input id="fck" type="number" step="any"></label>
+      <label class="f">기온보정강도 T_n (MPa) · 없으면 0<input id="Tn" type="number" step="any"></label>
+    </div>
+    <label class="chk"><input type="checkbox" id="sUnknown"> 표준편차를 모름 (새 공장 등)</label>
+    <div class="grid2" id="sBox">
+      <label class="f">표준편차 s (MPa)<input id="s" type="number" step="any"></label>
+      <label class="f">시험횟수 · 언급 없으면 비움<input id="nTest" type="number" step="1" placeholder="30회 이상으로 봄"></label>
+    </div>
+    <div class="hint">강도-물결합재비 관계식 f₂₈ = a + b·(B/W)</div>
+    <div class="grid2">
+      <label class="f">a<input id="ra" type="number" step="any"></label>
+      <label class="f">b<input id="rb" type="number" step="any"></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>③ 재료 · 배합 조건</h2>
+    <div class="grid2">
+      <label class="f">굵은골재 최대치수 (mm)
+        <select id="gmax"><option>15</option><option>20</option><option selected>25</option><option>40</option></select></label>
+      <label class="f">콘크리트 종류
+        <select id="ctype"><option value="ae">AE제 사용</option><option value="aewr">AE 감수제 사용</option><option value="non">AE제 사용 안 함</option></select></label>
+      <label class="f">목표 슬럼프 (mm)<input id="slump" type="number" step="any"></label>
+      <label class="f">목표 공기량 (%)<input id="air" type="number" step="any"></label>
+      <label class="f">잔골재 조립률<input id="fm" type="number" step="any"></label>
+      <label class="f">AE제 (시멘트 질량의 %)<input id="aeP" type="number" step="any"></label>
+      <label class="f">시멘트 밀도 (g/cm³)<input id="rc" type="number" step="any"></label>
+      <label class="f">잔골재 표건밀도 (g/cm³)<input id="rs" type="number" step="any"></label>
+      <label class="f">굵은골재 표건밀도 (g/cm³)<input id="rg" type="number" step="any"></label>
+      <label class="f">공기량 1%당 S/a 보정 (강의 0.75)<input id="airSa" type="number" step="any"></label>
+      <label class="f">기타 S/a 보정 (%) · 부순골재 등<input id="xSa" type="number" step="any" placeholder="없으면 비움"></label>
+      <label class="f">기타 W 보정 (kg) · 부순골재 등<input id="xW" type="number" step="any" placeholder="없으면 비움"></label>
+    </div>
+    <div class="hint">부순 굵은골재: S/a +3~5, W +9~15 kg · 부순 잔골재: S/a +2~3, W +6~9 kg</div>
+  </div>
+
+  <div class="card">
+    <h2>④ 시험비비기 보정 <small>문제에 없는 항목은 체크 해제</small></h2>
+    <label class="chk"><input type="checkbox" id="t1on"> Step 4 시험비비기 (슬럼프·공기량)</label>
+    <div class="grid2">
+      <label class="f">시험비비기 결과 슬럼프 (mm)<input id="t1slump" type="number" step="any"></label>
+      <label class="f">시험비비기 결과 공기량 (%)<input id="t1air" type="number" step="any"></label>
+    </div>
+    <div class="divider"></div>
+    <label class="chk"><input type="checkbox" id="t2on"> Step 5 S/a 변경 (워커빌리티)</label>
+    <div class="grid2"><label class="f">S/a 변경량 (%, 줄이면 −)<input id="t2dsa" type="number" step="any"></label></div>
+    <div class="divider"></div>
+    <label class="chk"><input type="checkbox" id="t3on"> Step 6 적정 W/B 선정 (새 강도식)</label>
+    <div class="hint">시험으로 얻은 관계식 f₂₈ = a′ + b′·(B/W)</div>
+    <div class="grid2">
+      <label class="f">a′<input id="t3a" type="number" step="any"></label>
+      <label class="f">b′<input id="t3b" type="number" step="any"></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>⑤ 현장배합 조건</h2>
+    <div class="grid2">
+      <label class="f">a: 잔골재 중 5mm체에 남는 양 (%)<input id="fa" type="number" step="any"></label>
+      <label class="f">b: 굵은골재 중 5mm체를 통과하는 양 (%)<input id="fb" type="number" step="any"></label>
+      <label class="f">c: 잔골재 표면수량 (%)<input id="fc" type="number" step="any"></label>
+      <label class="f">d: 굵은골재 표면수량 (%)<input id="fd" type="number" step="any"></label>
+    </div>
+    <label class="chk"><input type="checkbox" id="manualSpec"> 시방배합을 직접 입력 (문제에서 시방배합을 줄 때)</label>
+    <div class="grid2" id="specBox">
+      <label class="f">W (kg)<input id="mW" type="number" step="any"></label>
+      <label class="f">C (kg)<input id="mC" type="number" step="any"></label>
+      <label class="f">S (kg)<input id="mS" type="number" step="any"></label>
+      <label class="f">G (kg)<input id="mG" type="number" step="any"></label>
+    </div>
+  </div>
+  <div class="err" id="err0"></div>
+</section>
+
+<!-- ================= 전체 풀이 ================= -->
+<section id="pageAll" class="hidden">
+  <div id="allSteps"></div>
+</section>
+</main>
+
+<div id="imgView" class="overlay hidden">
+  <div class="ovhead"><div><b>풀이 이미지</b><div class="ovhint">이미지를 <b>길게 누르면</b> 메뉴가 나옵니다 → <b>공유</b> → <b>Goodnotes</b> (또는 <b>사진에 저장</b> 후 굿노트에서 가져오기). 페이지마다 한 장씩 해주세요.</div></div><button class="b" id="imgClose">닫기</button></div>
+  <div id="imgs"></div>
+</div>
+<div id="txtView" class="overlay hidden">
+  <div class="ovhead"><div><b>풀이 텍스트</b><div class="ovhint"><b>전체 복사</b>를 누른 뒤 원하는 곳에 붙여넣으세요. 자동 복사가 안 되면 텍스트를 길게 눌러 전체 선택 → 복사.</div></div>
+    <span class="rt" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="b" id="txtCopy">전체 복사</button><button class="b ghost" id="txtMode">일반 텍스트로 보기</button><button class="b ghost" id="txtClose">닫기</button></span></div>
+  <div style="padding:12px 14px"><textarea id="txtArea" readonly spellcheck="false"></textarea></div>
+</div>
+<nav class="bottom"><div class="in">
+  <button class="b ghost" id="back">◀ 조건 수정</button>
+  <span class="pos" id="pos"></span>
+  <span class="rt"><button class="b ghost hidden" id="txtbtn">텍스트</button><button class="b ghost hidden" id="imgbtn">이미지</button><button class="b ghost hidden" id="pdf">PDF</button><button class="b" id="go">풀이 시작 ▶</button></span>
+</div></nav>
+
+<script>
+/* ================= DATA (콘크리트 표준시방서 · 강의자료 Lecture07) ================= */
+const EXPO = [
+ {g:'E0',cat:'일반',cond:'물리적, 화학적 작용에 의한 콘크리트 손상의 우려가 없는 경우, 철근이나 내부 금속의 부식 위험이 없는 경우',ex:'공기 중 습도가 매우 낮은 건물 내부의 콘크리트',fcd:21,wb:null},
+ {g:'EC1',cat:'EC (탄산화)',cond:'건조하거나 수분으로부터 보호되는 또는 영구적으로 습윤한 콘크리트',ex:'공기 중 습도가 낮은 건물 내부의 콘크리트 · 물에 계속 침지되어 있는 콘크리트',fcd:21,wb:0.60},
+ {g:'EC2',cat:'EC (탄산화)',cond:'습윤하고 드물게 건조되는 콘크리트로 탄산화의 위험이 보통인 경우',ex:'장기간 물과 접하는 콘크리트 표면 · 외기에 노출되는 기초',fcd:24,wb:0.55},
+ {g:'EC3',cat:'EC (탄산화)',cond:'보통 정도의 습도에 노출되는 콘크리트로 탄산화 위험이 비교적 높은 경우',ex:'공기 중 습도가 보통 이상으로 높은 건물 내부의 콘크리트 · 비를 맞지 않는 외부 콘크리트',fcd:27,wb:0.50},
+ {g:'EC4',cat:'EC (탄산화)',cond:'건습이 반복되는 콘크리트로 매우 높은 탄산화 위험에 노출되는 경우',ex:'EC2 등급에 해당하지 않고 물과 접하는 콘크리트 (비를 맞는 콘크리트 외벽, 난간 등)',fcd:30,wb:0.45},
+ {g:'ES1',cat:'ES (해양환경, 제설염 등 염화물)',cond:'보통 정도의 습도에서 대기 중의 염화물에 노출되지만 해수 또는 염화물을 함유한 물에 직접 접하지 않는 콘크리트',ex:'해안가 또는 해안 근처 구조물 · 도로 주변에서 공기 중 제빙화학제에 노출되는 콘크리트',fcd:30,wb:0.45},
+ {g:'ES2',cat:'ES (해양환경, 제설염 등 염화물)',cond:'습윤하고 드물게 건조되며 염화물에 노출되는 콘크리트',ex:'수영장 · 염화물을 함유한 공업용수에 노출되는 콘크리트',fcd:30,wb:0.45},
+ {g:'ES3',cat:'ES (해양환경, 제설염 등 염화물)',cond:'항상 해수에 침지되는 콘크리트',ex:'해상 교각의 해수 중에 침지되는 부분',fcd:35,wb:0.40},
+ {g:'ES4',cat:'ES (해양환경, 제설염 등 염화물)',cond:'건습이 반복되면서 해수 또는 염화물에 노출되는 콘크리트',ex:'물보라 지역(비말대)·간만대 해양 콘크리트 · 염화물 물보라에 노출되는 교량 부위 · 도로 포장 · 주차장',fcd:35,wb:0.40},
+ {g:'EF1',cat:'EF (동결융해)',cond:'간혹 수분과 접촉하나 염화물에 노출되지 않고 동결융해의 반복작용에 노출되는 콘크리트',ex:'비와 동결에 노출되는 수직 콘크리트 표면',fcd:24,wb:0.55},
+ {g:'EF2',cat:'EF (동결융해)',cond:'간혹 수분과 접촉하고 염화물에 노출되며 동결융해의 반복작용에 노출되는 콘크리트',ex:'공기 중 제빙화학제와 동결에 노출되는 도로 구조물의 수직 콘크리트 표면',fcd:27,wb:0.50},
+ {g:'EF3',cat:'EF (동결융해)',cond:'지속적으로 수분과 접촉하나 염화물에 노출되지 않고 동결융해의 반복작용에 노출되는 콘크리트',ex:'비와 동결에 노출되는 수평 콘크리트 표면',fcd:30,wb:0.45},
+ {g:'EF4',cat:'EF (동결융해)',cond:'지속적으로 수분과 접촉하고 염화물에 노출되며 동결융해의 반복작용에 노출되는 콘크리트',ex:'제빙화학제에 노출되는 도로·교량 바닥판 · 동결에 노출되는 비말대·간만대 해양 콘크리트',fcd:30,wb:0.45},
+ {g:'EA1',cat:'EA (황산염)',cond:'보통 수준의 황산염 이온에 노출되는 콘크리트',ex:'토양 SO₄²⁻ 0.10~0.20 % · 물 150~1500 ppm · 해수',fcd:27,wb:0.50},
+ {g:'EA2',cat:'EA (황산염)',cond:'유해한 수준의 황산염 이온에 노출되는 콘크리트',ex:'토양 SO₄²⁻ 0.20~2.00 % · 물 1500~10000 ppm',fcd:30,wb:0.45},
+ {g:'EA3',cat:'EA (황산염)',cond:'매우 유해한 수준의 황산염 이온에 노출되는 콘크리트',ex:'토양 SO₄²⁻ > 2.00 % · 물 > 10000 ppm · 하수, 오·폐수',fcd:30,wb:0.45},
+];
+// 표 1 (기준: 조립률 2.8, 슬럼프 80mm, W/B 0.55, 자갈)
+const T1 = {
+  15:{trap:2.5,nonSa:49,nonW:190,air:7.0,aeSa:47,aeW:180,wrSa:48,wrW:170},
+  20:{trap:2.0,nonSa:45,nonW:185,air:6.0,aeSa:44,aeW:175,wrSa:45,wrW:165},
+  25:{trap:1.5,nonSa:41,nonW:175,air:5.0,aeSa:42,aeW:170,wrSa:43,wrW:160},
+  40:{trap:1.2,nonSa:36,nonW:165,air:4.5,aeSa:39,aeW:165,wrSa:40,wrW:155},
+};
+const SCORR=[[15,1.16],[20,1.08],[25,1.03],[30,1.00]];
+const EXAMPLE={expo:'EF2',fck:24,Tn:0,sUnknown:false,s:3.6,nTest:'',ra:1.9,rb:14.4,
+  gmax:'25',ctype:'ae',slump:120,air:4.5,fm:2.86,aeP:0.03,rc:3.15,rs:2.6,rg:2.65,airSa:0.75,xSa:'',xW:'',
+  t1on:true,t1slump:140,t1air:5.5,t2on:true,t2dsa:2,t3on:true,t3a:-12.5,t3b:21,
+  fa:5,fb:4,fc:2.5,fd:0.5,manualSpec:false,mW:'',mC:'',mS:'',mG:''};
+const NUMK=['fck','Tn','s','nTest','ra','rb','slump','air','fm','aeP','rc','rs','rg','airSa','xSa','xW',
+  't1slump','t1air','t2dsa','t3a','t3b','fa','fb','fc','fd','mW','mC','mS','mG'];
+
+/* ================= HELPERS ================= */
+const rd=(x,n=0)=>{const p=10**n;return Math.sign(x)*Math.round(Math.abs(x)*p+1e-9)/p;};
+const f=(x,n=0)=>rd(x,n).toFixed(n).replace('-','−');          // fixed decimals
+const T=(x,d=3)=>String(rd(x,d)).replace('-','−');            // trimmed
+const SG=(x,d=3)=>(rd(x,d)>=0?'+':'−')+String(rd(Math.abs(x),d)); // signed
+const num=v=>(v===''||v===null||v===undefined||isNaN(+v))?null:+v;
+const u=s=>'<span class="u">'+s+'</span>';
+const arrowR=(raw,r,unit,und)=>{ // "180.71 ⇒ 181 kg"
+  const same=Math.abs(raw-r)<1e-9; const v=r+(unit?' '+unit:'');
+  return (same?'':T(raw,2)+' ⇒ ')+(und?u(v):v);
+};
+
+/* ================= CALC ================= */
+function mixFrom(W,WB,Sa,inp){
+  const Craw=W/WB, C=rd(Craw,0), AE=C*inp.aeP/100;
+  const Cvraw=C/inp.rc, Cv=rd(Cvraw,0), Avraw=inp.air*10, Av=rd(Avraw,0);
+  const Agg=1000-W-Cv-Av;
+  const Svraw=Agg*Sa/100, Sv=rd(Svraw,0), Gv=Agg-Sv;
+  const Sraw=Sv*inp.rs, S=rd(Sraw,0), Graw=Gv*inp.rg, G=rd(Graw,0);
+  return {W,WB,Sa,Craw,C,AE,Cvraw,Cv,Avraw,Av,Agg,Svraw,Sv,Gv,Sraw,S,Graw,G};
+}
+function compute(raw){
+  const inp={...raw}; NUMK.forEach(k=>inp[k]=num(inp[k]));
+  if(inp.Tn===null) inp.Tn=0; if(inp.airSa===null) inp.airSa=0.75; if(inp.aeP===null) inp.aeP=0; if(inp.rc===null) inp.rc=3.15;
+  inp.gmax=String(inp.gmax);
+  const need=(c,m)=>{if(!c) throw new Error(m);};
+  const ex=EXPO.find(e=>e.g===inp.expo); need(ex,'노출등급을 선택하세요.');
+  need(inp.fck!==null,'f_ck를 입력하세요.');
+  const R={inp,ex};
+
+  /* Step 1 */
+  const fcq=Math.max(inp.fck,ex.fcd), fcn=fcq+inp.Tn;
+  const s1={fck:inp.fck,fcd:ex.fcd,fcq,Tn:inp.Tn,fcn}; const n=inp.nTest;
+  if(inp.sUnknown||(n!==null&&n<15)){
+    s1.mode='table'; s1.reason=inp.sUnknown?'표준편차를 모름':'시험횟수 '+n+'회 (14회 이하)';
+    if(fcn<21){s1.cs='<21';s1.raw=fcn+7;} else if(fcn<=35){s1.cs='21~35';s1.raw=fcn+8.5;} else {s1.cs='>35';s1.raw=1.1*fcn+5;}
+    s1.fcr=rd(s1.raw,1);
+  } else {
+    need(inp.s!==null,'표준편차 s를 입력하거나 "표준편차를 모름"을 체크하세요.');
+    s1.mode='s'; s1.s=inp.s; s1.n=n;
+    if(n!==null&&n<30){
+      const hit=SCORR.find(p=>p[0]===n);
+      if(hit){s1.Fcase='exact';s1.F=hit[1];}
+      else{let i=0;while(!(n>SCORR[i][0]&&n<SCORR[i+1][0]))i++;
+        const [n1,F1]=SCORR[i],[n2,F2]=SCORR[i+1];
+        Object.assign(s1,{Fcase:'interp',n1,F1,n2,F2,F:F1-(F1-F2)/(n2-n1)*(n-n1)});}
+      s1.s2=rd(inp.s*s1.F,2);
+    } else {s1.Fcase=n===null?'none':'30+'; s1.s2=inp.s;}
+    s1.a1=fcn+1.34*s1.s2; s1.a2=fcn<=35?(fcn-3.5)+2.33*s1.s2:0.9*fcn+2.33*s1.s2;
+    s1.fcr=rd(Math.max(s1.a1,s1.a2),1);
+  }
+  R.s1=s1; const fcr=s1.fcr;
+
+  /* Step 2 */
+  need(inp.ra!==null&&inp.rb!==null&&inp.rb!==0,'강도식 a, b를 입력하세요.');
+  const BW=(fcr-inp.ra)/inp.rb; need(BW>0,'강도식으로 B/W가 양수가 나오지 않습니다. a, b를 확인하세요.');
+  const WBs=rd(1/BW,2), WB=ex.wb!==null?Math.min(WBs,ex.wb):WBs;
+  need(inp.slump!==null&&inp.air!==null&&inp.fm!==null,'슬럼프, 공기량, 조립률을 입력하세요.');
+  need(inp.rs!==null&&inp.rg!==null,'골재 밀도를 입력하세요.');
+  const t=T1[inp.gmax], isAE=inp.ctype!=='non';
+  const baseSa=inp.ctype==='ae'?t.aeSa:inp.ctype==='aewr'?t.wrSa:t.nonSa;
+  const baseW=inp.ctype==='ae'?t.aeW:inp.ctype==='aewr'?t.wrW:t.nonW;
+  const baseAir=isAE?t.air:t.trap;
+  const rows=[
+    {k:'조립률',base:2.8,tg:inp.fm,unit:'',diff:inp.fm-2.8,sa:(inp.fm-2.8)/0.1*0.5,w:null},
+    {k:'슬럼프',base:80,tg:inp.slump,unit:'mm',diff:inp.slump-80,sa:null,w:(inp.slump-80)/10*1.2},
+    {k:'공기량',base:baseAir,tg:inp.air,unit:'%',diff:inp.air-baseAir,sa:isAE?-(inp.air-baseAir)*inp.airSa:null,w:isAE?-(inp.air-baseAir)*3:null},
+    {k:'W/B',base:0.55,tg:WB,unit:'',diff:WB-0.55,sa:(WB-0.55)/0.05,w:null},
+  ];
+  const xSa=inp.xSa??0, xW=inp.xW??0;
+  const saTerms=rows.filter(r=>r.sa!==null).map(r=>r.sa); if(xSa) saTerms.push(xSa);
+  const sumSa=saTerms.reduce((a,b)=>a+b,0), sumWp=rows.filter(r=>r.w!==null).reduce((a,r)=>a+r.w,0);
+  const SaRaw=baseSa+sumSa, Sa0=rd(SaRaw,1), WRaw=baseW*(1+sumWp/100)+xW, W0=rd(WRaw,0);
+  R.s2={ra:inp.ra,rb:inp.rb,BW,WBs,WB,wb:ex.wb,gmax:inp.gmax,typeName:{ae:'AE제',aewr:'AE 감수제',non:'AE제 없음'}[inp.ctype],
+    isAE,baseSa,baseW,baseAir,rows,xSa,xW,saTerms,sumWp,SaRaw,Sa0,WRaw,W0};
+
+  /* Step 3 */
+  R.mix0=mixFrom(W0,WB,Sa0,inp);
+  const rounds=[{name:'Step 3',...R.mix0}];
+  let cur={W:W0,WB,Sa:Sa0};
+
+  /* Step 4 */
+  R.t1={on:inp.t1on,prev:{...cur}};
+  if(inp.t1on){
+    if(inp.t1slump===null||inp.t1air===null) R.t1.miss='시험비비기 결과 슬럼프와 공기량을 입력하세요.';
+    else{
+      const dS=inp.slump-inp.t1slump, dA=inp.air-inp.t1air;
+      const rr=[{k:'슬럼프',res:inp.t1slump,tg:inp.slump,unit:'mm',diff:dS,sa:null,w:dS/10*1.2},
+                {k:'공기량',res:inp.t1air,tg:inp.air,unit:'%',diff:dA,sa:-dA*inp.airSa,w:-dA*3}];
+      const wSum=rr[0].w+rr[1].w, saSum=rr[1].sa;
+      const SaN=rd(cur.Sa+saSum,2), WRaw1=cur.W*(1+wSum/100), Wn=rd(WRaw1,0);
+      cur={...cur,W:Wn,Sa:SaN};
+      Object.assign(R.t1,{rows:rr,wSum,saSum,SaN,WRaw:WRaw1,Wn,mix:mixFrom(cur.W,cur.WB,cur.Sa,inp)});
+      rounds.push({name:'Step 4',...R.t1.mix});
+    }
+  }
+  /* Step 5 */
+  R.t2={on:inp.t2on,prev:{...cur}};
+  if(inp.t2on){
+    if(inp.t2dsa===null) R.t2.miss='S/a 변경량을 입력하세요.';
+    else{
+      const dsa=inp.t2dsa, SaN=rd(cur.Sa+dsa,2), dW=1.5*dsa, WRaw2=cur.W+dW, Wn=rd(WRaw2,0);
+      cur={...cur,W:Wn,Sa:SaN};
+      Object.assign(R.t2,{dsa,SaN,dW,WRaw:WRaw2,Wn,mix:mixFrom(cur.W,cur.WB,cur.Sa,inp)});
+      rounds.push({name:'Step 5',...R.t2.mix});
+    }
+  }
+  /* Step 6 */
+  R.t3={on:inp.t3on,prev:{...cur}};
+  if(inp.t3on){
+    if(inp.t3a===null||inp.t3b===null||inp.t3b===0) R.t3.miss='새 강도식의 a′, b′를 입력하세요.';
+    else if(!((fcr-inp.t3a)/inp.t3b>0)) R.t3.miss='새 강도식으로 B/W가 양수가 나오지 않습니다. a′, b′를 확인하세요.';
+    else{
+      const BW2=(fcr-inp.t3a)/inp.t3b, WBs2=rd(1/BW2,2), WB2=ex.wb!==null?Math.min(WBs2,ex.wb):WBs2;
+      const dWB=WB2-cur.WB, dSa=dWB/0.05, SaN=rd(cur.Sa+dSa,2);
+      cur={...cur,WB:WB2,Sa:SaN};
+      Object.assign(R.t3,{a:inp.t3a,b:inp.t3b,BW2,WBs2,WB2,dWB,dSa,SaN,mix:mixFrom(cur.W,cur.WB,cur.Sa,inp)});
+      rounds.push({name:'Step 6',...R.t3.mix});
+    }
+  }
+  R.rounds=rounds; R.spec=rounds[rounds.length-1];
+
+  /* Step 7 */
+  const sp=inp.manualSpec?{W:inp.mW,C:inp.mC,S:inp.mS,G:inp.mG}:{W:R.spec.W,C:R.spec.C,S:R.spec.S,G:R.spec.G};
+  const F7={manual:inp.manualSpec,sp};
+  if([inp.fa,inp.fb,inp.fc,inp.fd].some(v=>v===null)) F7.miss='a, b, c, d를 입력하세요.';
+  else if([sp.W,sp.C,sp.S,sp.G].some(v=>v===null)) F7.miss='시방배합 W, C, S, G를 입력하세요.';
+  else{
+    const a=inp.fa,b=inp.fb,c=inp.fc,d=inp.fd,Tt=sp.S+sp.G;
+    const xRaw=(100*sp.S-b*Tt)/(100-(a+b)), x=rd(xRaw,0), y=Tt-x;
+    const ws=x*c/100, wg=y*d/100;
+    const fWr=sp.W-ws-wg, fSr=x+ws, fGr=y+wg;
+    Object.assign(F7,{a,b,c,d,Tt,xRaw,x,y,ws,wg,fWr,fSr,fGr,fW:rd(fWr,0),fS:rd(fSr,0),fG:rd(fGr,0)});
+  }
+  R.field=F7;
+  return R;
+}
+
+/* ================= RENDER (손풀이 노트 형식) ================= */
+const eq=(h,ind,cls)=>'<div class="eq'+(ind?' i'+ind:'')+(cls?' '+cls:'')+'">'+h+'</div>';
+const gl=(h,ind)=>eq(h,ind,'g');
+const gap='<div class="gap"></div>';
+function sumBox(m,label){
+  return '<div class="sumbox"><span class="arr">⇒</span>'+(label?'<span class="lbl">'+label+'</span>':'')
+   +'<table><tr><th>W</th><th>C</th><th>S</th><th>G</th></tr><tr><td>'+m.W+'</td><td>'+m.C+'</td><td>'+m.S+'</td><td>'+m.G+'</td></tr></table></div>';
+}
+function mixHTML(m,inp){
+  let h='';
+  h+=eq('W = '+m.W+' kg / '+m.W+' L');
+  h+=eq('C = W ÷ (W/B) = '+m.W+' ÷ '+f(m.WB,2)+' = '+arrowR(m.Craw,m.C,'kg',true)+' &nbsp;/&nbsp; '+m.C+' ÷ '+inp.rc+' = '+arrowR(m.Cvraw,m.Cv,'L'));
+  h+=eq('V<sub>air</sub> = 1000 × '+T(inp.air)+'/100 = '+arrowR(m.Avraw,m.Av,'L'));
+  h+=eq('골재 = 1000 − '+m.W+' − '+m.Cv+' − '+m.Av+' = '+u(m.Agg+' L'));
+  h+=eq('잔골재(S) = '+m.Agg+' × '+T(m.Sa,2)+'/100 = '+arrowR(m.Svraw,m.Sv,'L')+' &nbsp;/&nbsp; '+m.Sv+' × '+inp.rs+' = '+arrowR(m.Sraw,m.S,'kg',true));
+  h+=eq('굵은골재(G) = '+m.Agg+' − '+m.Sv+' = '+m.Gv+' L &nbsp;/&nbsp; '+m.Gv+' × '+inp.rg+' = '+arrowR(m.Graw,m.G,'kg',true));
+  if(inp.aeP) h+=gl('AE제 = '+m.C+' × '+T(inp.aeP,4)+'/100 = '+T(m.AE,4)+' kg ('+T(m.AE*1000,1)+' g)');
+  return h+sumBox(m);
+}
+function corrTable(head,rows,extra){
+  let h='<table class="ct"><tr><th></th>'+head.map(x=>'<th>'+x+'</th>').join('')+'</tr>';
+  rows.forEach(r=>{h+='<tr><td class="k">'+r[0]+'</td>'+r.slice(1).map(c=>'<td'+(c==='X'?' class="x"':'')+'>'+c+'</td>').join('')+'</tr>';});
+  if(extra) h+=extra;
+  return h+'</table>';
+}
+const vU=(v,unit)=>T(v)+unit;
+
+function renderS1(R){
+  const s=R.s1, ex=R.ex; let h='';
+  h+=eq('f<sub>ck</sub> = '+s.fck+' MPa');
+  h+=eq('노출등급 : '+ex.g+' ⇒ f<sub>cd</sub> = '+ex.fcd+' MPa');
+  h+=gl(ex.cond,1);
+  h+=eq('f<sub>cq</sub> = max(f<sub>ck</sub>, f<sub>cd</sub>) = max('+s.fck+', '+ex.fcd+') = '+s.fcq+' MPa');
+  h+=eq('⇒ f<sub>cn</sub> = f<sub>cq</sub> + T<sub>n</sub>',1);
+  h+=eq('T<sub>n</sub> = '+T(s.Tn)+' ⇒ f<sub>cn</sub> = '+u(T(s.fcn)+' MPa'),1);
+  h+=gap;
+  if(s.mode==='table'){
+    h+=eq(s.reason+' ⇒ s 없이 표 사용');
+    if(s.cs==='<21') h+=eq('f<sub>cn</sub> &lt; 21 MPa ⇒ f<sub>cr</sub> = f<sub>cn</sub> + 7 = '+T(s.fcn)+' + 7 = '+u(f(s.fcr,1)+' MPa'),1);
+    else if(s.cs==='21~35') h+=eq('21 ≤ f<sub>cn</sub> ≤ 35 MPa ⇒ f<sub>cr</sub> = f<sub>cn</sub> + 8.5 = '+T(s.fcn)+' + 8.5 = '+u(f(s.fcr,1)+' MPa'),1);
+    else h+=eq('f<sub>cn</sub> &gt; 35 MPa ⇒ f<sub>cr</sub> = 1.1 f<sub>cn</sub> + 5 = 1.1 × '+T(s.fcn)+' + 5 = '+u(f(s.fcr,1)+' MPa'),1);
+    return h;
+  }
+  let sx='s';
+  if(s.Fcase==='none') h+=eq('s = '+T(s.s)+' MPa'+'<span class="op"> (시험횟수 언급 없음 ⇒ 그대로)</span>');
+  else if(s.Fcase==='30+') h+=eq('s = '+T(s.s)+' MPa'+'<span class="op"> (시험횟수 '+s.n+'회 ≥ 30 ⇒ 그대로)</span>');
+  else{
+    sx='s′';
+    if(s.Fcase==='exact') h+=eq('시험횟수 '+s.n+'회 ⇒ 보정계수 '+s.F.toFixed(2));
+    else{ h+=eq('시험횟수 '+s.n+'회 ⇒ '+s.n1+'회('+s.F1.toFixed(2)+')와 '+s.n2+'회('+s.F2.toFixed(2)+') 사이 직선보간');
+      h+=eq('F = '+s.F1.toFixed(2)+' − ('+s.F1.toFixed(2)+' − '+s.F2.toFixed(2)+')/('+s.n2+' − '+s.n1+') × ('+s.n+' − '+s.n1+') = '+T(s.F,3),1); }
+    h+=eq('s′ = '+T(s.s)+' × '+T(s.F,3)+' = '+T(s.s2,2)+' MPa',1);
+  }
+  const sv=T(s.s2,2);
+  h+=gap+eq('f<sub>cn</sub> '+(s.fcn<=35?'≤':'&gt;')+' 35 MPa');
+  h+=eq('⇒ f<sub>cr</sub> = f<sub>cn</sub> + 1.34'+sx+' ··· ① → '+T(s.fcn)+' + 1.34 × '+sv+' = '+f(s.a1,1)+' MPa',1);
+  if(s.fcn<=35) h+=eq('f<sub>cr</sub> = (f<sub>cn</sub> − 3.5) + 2.33'+sx+' ··· ② → ('+T(s.fcn)+' − 3.5) + 2.33 × '+sv+' = '+f(s.a2,1)+' MPa',2);
+  else h+=eq('f<sub>cr</sub> = 0.9 f<sub>cn</sub> + 2.33'+sx+' ··· ② → 0.9 × '+T(s.fcn)+' + 2.33 × '+sv+' = '+f(s.a2,1)+' MPa',2);
+  h+=eq('f<sub>cr</sub> = '+u(f(s.fcr,1)+' MPa')+' <span class="op">(큰 값)</span>',1);
+  return h;
+}
+function renderS2(R){
+  const s=R.s2, fcr=R.s1.fcr; let h='';
+  h+=eq(f(fcr,1)+' = '+T(s.ra)+' + '+T(s.rb)+' B/W');
+  h+=eq('B/W = ('+f(fcr,1)+' − '+T(s.ra)+') ÷ '+T(s.rb)+' = '+T(s.BW,3));
+  h+=eq('W/B = 1 ÷ '+T(s.BW,3)+' = '+f(s.WBs,2));
+  if(s.wb!==null){ h+=eq('노출등급 '+R.ex.g+' ⇒ W/B ≤ '+f(s.wb,2));
+    h+=eq('min('+f(s.WBs,2)+', '+f(s.wb,2)+') ⇒ '+u('W/B = '+f(s.WB,2))); }
+  else h+=eq('노출등급 E0 ⇒ 최대 W/B 규정 없음 ⇒ '+u('W/B = '+f(s.WB,2)));
+  h+=gap+eq('표 1 ('+s.gmax+' mm, '+s.typeName+') ⇒ S/a = '+s.baseSa+' %, W = '+s.baseW+' kg');
+  const rows=s.rows.map(r=>[r.k, vU(r.base,r.unit), vU(r.tg,r.unit), SG(r.diff,3)+r.unit,
+     r.sa===null?'X':'S/a '+SG(r.sa,3), r.w===null?'X':'W '+SG(r.w,3)+'%']);
+  if(s.xSa||s.xW) rows.push(['기타','','','', s.xSa?'S/a '+SG(s.xSa,3):'X', s.xW?'W '+SG(s.xW,2)+' kg':'X']);
+  h+=corrTable(['기준','목표','차이','S/a','W'],rows);
+  h+=gl('차이 = 목표 − 기준 · 공기량은 반대 방향'+(s.isAE?'':' · AE제를 쓰지 않으면 공기량 보정 없음'));
+  const terms=s.saTerms.map(v=>(rd(v,3)>=0?' + ':' − ')+T(Math.abs(v),3)).join('');
+  h+=eq('⇒ S/a = '+s.baseSa+terms+' = '+arrowR(s.SaRaw,s.Sa0,'%',true));
+  h+=eq('W = '+s.baseW+' × '+T(100+s.sumWp,3)+'/100'+(s.xW?' '+SG(s.xW,2):'')+' = '+arrowR(s.WRaw,s.W0,'kg',true),1);
+  return h;
+}
+function prevLine(p){return '<div class="prev">이전 배합: W/B '+f(p.WB,2)+' · S/a '+T(p.Sa,2)+' % · W '+p.W+' kg</div>';}
+function skipHTML(p,msg){return '<div class="skip">'+msg+'</div>'+prevLine(p);}
+function renderS4(R){
+  const t=R.t1, inp=R.inp;
+  if(!t.on) return skipHTML(t.prev,'시험비비기 보정을 하지 않습니다. 이전 배합 그대로 다음 Step으로 넘어갑니다.');
+  if(t.miss) return '<div class="err">'+t.miss+'</div>';
+  let h=prevLine(t.prev);
+  h+=corrTable(['결과','목표','차이','S/a','W'],t.rows.map(r=>[r.k,vU(r.res,r.unit),vU(r.tg,r.unit),SG(r.diff,3)+r.unit,
+     r.sa===null?'X':'S/a '+SG(r.sa,3),'W '+SG(r.w,3)+'%']),
+     '<tr class="sum"><td class="k">합계</td><td></td><td></td><td></td><td>S/a '+SG(t.saSum,3)+'</td><td>W '+SG(t.wSum,3)+'%</td></tr>');
+  h+=gl('차이 = 목표 − 결과 · 슬럼프 10 mm당 W 1.2 % · 공기량 1 %당 S/a '+T(inp.airSa)+', W 3 % (반대 방향)');
+  h+=eq('⇒ S/a = '+T(t.prev.Sa,2)+' '+(rd(t.saSum,3)>=0?'+':'−')+' '+T(Math.abs(t.saSum),3)+' = '+u(T(t.SaN,2)+' %'));
+  h+=eq('W = '+t.prev.W+' × '+T(100+t.wSum,3)+'/100 = '+arrowR(t.WRaw,t.Wn,'kg',true),1);
+  return h+gap+mixHTML(t.mix,inp);
+}
+function renderS5(R){
+  const t=R.t2, inp=R.inp;
+  if(!t.on) return skipHTML(t.prev,'S/a 변경을 하지 않습니다. 이전 배합 그대로 다음 Step으로 넘어갑니다.');
+  if(t.miss) return '<div class="err">'+t.miss+'</div>';
+  let h=prevLine(t.prev);
+  h+=eq('S/a = '+T(t.prev.Sa,2)+' '+(t.dsa>=0?'+':'−')+' '+T(Math.abs(t.dsa))+' = '+u(T(t.SaN,2)+' %'));
+  h+=eq('W = '+t.prev.W+' '+(t.dW>=0?'+':'−')+' '+T(Math.abs(t.dW),2)+' = '+arrowR(t.WRaw,t.Wn,'kg',true));
+  h+=gl('S/a 1 %당 W 1.5 kg ⇒ '+T(t.dsa)+' × 1.5 = '+T(t.dW,2)+' kg (kg으로 더하기)');
+  h+=eq('W/B = '+f(t.prev.WB,2)+' <span class="op">(그대로)</span>');
+  return h+gap+mixHTML(t.mix,inp);
+}
+function renderS6(R){
+  const t=R.t3, inp=R.inp, fcr=R.s1.fcr;
+  if(!t.on) return skipHTML(t.prev,'W/B를 다시 정하지 않습니다. 이전 배합이 시방배합이 됩니다.');
+  if(t.miss) return '<div class="err">'+t.miss+'</div>';
+  let h=prevLine(t.prev);
+  h+=eq('f<sub>28</sub> = '+T(t.a)+' + '+T(t.b)+' B/W');
+  h+=eq(f(fcr,1)+' = '+T(t.a)+' + '+T(t.b)+' B/W');
+  h+=eq('B/W = '+T(t.BW2,3)+' &nbsp;/&nbsp; W/B = '+f(t.WBs2,2));
+  if(R.ex.wb!==null) h+=eq('min('+f(R.ex.wb,2)+', '+f(t.WBs2,2)+') ⇒ '+u(f(t.WB2,2)),1);
+  h+=gap;
+  if(Math.abs(t.dWB)<1e-9){ h+=eq('W/B '+f(t.prev.WB,2)+' → '+f(t.WB2,2)+' ⇒ 변화 없음 ⇒ S/a 그대로'); }
+  else{
+    h+=eq('W/B '+f(t.prev.WB,2)+' → '+f(t.WB2,2)+' ⇒ '+SG(t.dWB,2));
+    h+=eq('0.05 : 1 = '+T(Math.abs(t.dWB),2)+' : '+T(Math.abs(t.dSa),3),1);
+    h+=gl('W/B 0.05당 S/a 1 같은 방향',1);
+  }
+  h+=eq('⇒ S/a = '+T(t.prev.Sa,2)+' '+(t.dSa>=0?'+':'−')+' '+T(Math.abs(t.dSa),3)+' = '+u(T(t.SaN,2)+' %'));
+  h+=eq('W = '+t.prev.W+' kg <span class="op">(그대로)</span>',1);
+  return h+gap+mixHTML(t.mix,inp);
+}
+function renderS7(R){
+  const F=R.field; let h='';
+  h+=eq('시방배합'+(F.manual?' <span class="op">(직접 입력)</span>':''),0,'h');
+  if(F.miss) return h+'<div class="err">'+F.miss+'</div>'+mixTableHTML(R);
+  const sp=F.sp;
+  h+=sumBox(sp);
+  const fr=(a,b)=>'<span class="frac"><span>'+a+'</span><span>'+b+'</span></span>';
+  const ZS='Z<sub>S</sub>', ZG='Z<sub>G</sub>', ZW='Z<sub>W</sub>';
+  h+=gap+eq('① 입도보정',0,'h');
+  h+=gl('S, G : 시방배합의 단위잔골재량·단위굵은골재량 · a = '+T(F.a)+' % (잔골재 중 5mm체에 남는 양), b = '+T(F.b)+' % (굵은골재 중 5mm체 통과)');
+  h+=eq(ZS+'′ + '+ZG+'′ = S + G = '+sp.S+' + '+sp.G+' = '+F.Tt);
+  h+=eq('a·'+ZS+'′ + (100 − b)'+ZG+'′ = 100G');
+  h+=eq(ZS+'′ = '+fr('100S − b(S + G)','100 − (a + b)')+' = '
+     +fr('100 × '+sp.S+' − '+T(F.b)+' × ('+sp.S+' + '+sp.G+')','100 − ('+T(F.a)+' + '+T(F.b)+')')+' = '
+     +fr(T(100*sp.S-F.b*F.Tt,2),T(100-(F.a+F.b),3))+' = '+arrowR(F.xRaw,F.x,'kg',true),0,'fr');
+  h+=eq(ZG+'′ = (S + G) − '+ZS+'′ = '+F.Tt+' − '+F.x+' = '+u(F.y+' kg'));
+  h+=gap+eq('② 표면수 보정',0,'h');
+  h+=gl('c = '+T(F.c)+' % (잔골재 표면수량), d = '+T(F.d)+' % (굵은골재 표면수량) · '+ZW+'′ = 시방배합의 단위수량');
+  h+=eq(ZS+' = '+ZS+'′ + '+ZS+'′'+fr('c','100')+' = '+F.x+' + '+F.x+' × '+fr(T(F.c),'100')+' = '+F.x+' + '+T(F.ws,2)+' = '+arrowR(F.fSr,F.fS,'kg',true),0,'fr');
+  h+=eq(ZG+' = '+ZG+'′ + '+ZG+'′'+fr('d','100')+' = '+F.y+' + '+F.y+' × '+fr(T(F.d),'100')+' = '+F.y+' + '+T(F.wg,2)+' = '+arrowR(F.fGr,F.fG,'kg',true),0,'fr');
+  h+=eq(ZW+' = '+ZW+'′ − '+fr(ZS+'′c + '+ZG+'′d','100')+' = '+sp.W+' − '+fr(F.x+' × '+T(F.c)+' + '+F.y+' × '+T(F.d),'100')
+     +' = '+sp.W+' − '+T(F.ws+F.wg,2)+' = '+arrowR(F.fWr,F.fW,'kg',true),0,'fr');
+  h+=gl('골재가 가져온 물만큼 물은 빼고 골재는 더함');
+  h+=sumBox({W:F.fW,C:sp.C,S:F.fS,G:F.fG},'현장배합');
+  return h+mixTableHTML(R);
+}
+
+/* ================= 배합표 (배합의 표시법) ================= */
+function mixRowTable(title,o,R){
+  const inp=R.inp;
+  const sl=T(inp.slump), ar=T(inp.air)+'%';
+  return '<div class="mtcap">'+title+'</div><div class="mtwrap"><table class="mt">'
+   +'<tr><th rowspan="2">굵은골재<br>최대치수<br>(mm)</th><th rowspan="2">슬럼프<br>범위<br>(mm)</th><th rowspan="2">공기량<br>범위<br>(%)</th>'
+   +'<th rowspan="2">물-시멘트비<br>W/C<sup>1)</sup><br>(%)</th><th rowspan="2">잔골재율<br>S/a<br>(%)</th><th colspan="5">단위 질량 (kg/m³)</th></tr>'
+   +'<tr><th>물<br>W</th><th>시멘트<br>C</th><th>잔골재<br>S</th><th>굵은골재<br>G</th><th>혼화제<br>CA</th></tr>'
+   +'<tr><td>'+inp.gmax+'</td><td>'+sl+'</td><td>'+ar+'</td><td>'+f(o.wc,1)+'</td><td>'+f(o.sa,1)+'</td>'
+   +'<td>'+o.W+'</td><td>'+o.C+'</td><td>'+o.S+'</td><td>'+o.G+'</td><td>'+(inp.aeP?T(o.C*inp.aeP/100,4):'–')+'</td></tr></table></div>';
+}
+function mixTableHTML(R){
+  const F=R.field, sp=F.sp; let wc,sa;
+  if(F.manual){
+    if([sp.W,sp.C,sp.S,sp.G].some(v=>v===null)) return '';
+    wc=sp.W/sp.C*100; const vs=sp.S/R.inp.rs, vg=sp.G/R.inp.rg; sa=vs/(vs+vg)*100;
+  } else { wc=R.spec.WB*100; sa=R.spec.Sa; }
+  let h='<div class="gap"></div><div class="eq h">배합표</div>';
+  if(!F.miss) h+=mixRowTable('현장배합 (최종)',{wc,sa,W:F.fW,C:sp.C,S:F.fS,G:F.fG},R);
+  h+=mixRowTable('시방배합',{wc,sa,W:sp.W,C:sp.C,S:sp.S,G:sp.G},R);
+  return h+'<div class="mtnote">1) 포졸란 반응성 및 잠재 수경성을 갖는 혼화재를 사용하지 않은 경우에는 물-시멘트비가 된다.<br>2) 여러 종류의 것을 사용하는 경우에는 각각의 난을 나누어 표시한다.</div>';
+}
+function roundsHTML(R){
+  if(R.rounds.length<2) return '';
+  let h='<div class="card" style="margin-top:14px"><h2>보정 과정 요약</h2><table class="rt"><tr><th class="k">항목</th>'+R.rounds.map(x=>'<th>'+x.name+'</th>').join('')+'</tr>';
+  [['W/B',x=>f(x.WB,2)],['S/a (%)',x=>T(x.Sa,2)],['W (kg)',x=>x.W],['C (kg)',x=>x.C],['S (kg)',x=>x.S],['G (kg)',x=>x.G]]
+   .forEach(([n,fn])=>{h+='<tr><td class="k">'+n+'</td>'+R.rounds.map(x=>'<td>'+fn(x)+'</td>').join('')+'</tr>';});
+  return h+'</table><div class="hint" style="margin:8px 0 0">부피를 정수(L)로 반올림한 뒤 밀도를 곱했습니다. 강의자료와 골재량이 ±1~2 kg 다를 수 있습니다.</div></div>';
+}
+
+
+
+/* ================= PDF 저장 ================= */
+let DL=undefined; // undefined: 확인 전, null: 사용 불가, object: claude downloads
+const HAS_CLAUDE=!!(window.claude&&window.claude.use);
+if(HAS_CLAUDE){ window.claude.use('downloads').then(d=>{DL=d;renderNav();}).catch(()=>{DL=null;renderNav();}); }
+function pdfAvailable(){ return HAS_CLAUDE ? !!DL : true; }
+function toast(msg,ms=3500){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),ms); }
+function headHTML(){
+  const i=R.inp, s=R.s1;
+  const cond=['f<sub>ck</sub> '+T(i.fck)+' MPa','노출등급 '+R.ex.g,
+    (i.sUnknown?'표준편차 모름':'s '+T(i.s)+' MPa'+(i.nTest!==null?' ('+i.nTest+'회)':'')),
+    'f₂₈ = '+T(i.ra)+' + '+T(i.rb)+' B/W','G<sub>max</sub> '+i.gmax+' mm','슬럼프 '+T(i.slump)+' mm','공기량 '+T(i.air)+' %','조립률 '+T(i.fm)];
+  const d=new Date(); const ds=d.getFullYear()+'.'+(d.getMonth()+1)+'.'+d.getDate();
+  return '<div class="pdfhead"><div class="t">콘크리트 배합설계 풀이</div><div class="c">'+cond.join(' · ')+'<br>작성 '+ds+' · 콘크리트 배합설계 계산기</div></div>';
+}
+async function sectionCanvas(el){
+  const c=await html2canvas(el,{scale:2,backgroundColor:'#ffffff',windowWidth:1000,logging:false});
+  // 줄 단위로 자를 수 있는 위치(px, 캔버스 기준)
+  const top=el.getBoundingClientRect().top, k=c.height/el.getBoundingClientRect().height;
+  const cuts=[...el.querySelectorAll('.eq,.sumbox,table.ct,.mtwrap,.mtcap,.mtnote,.gap,.stitle,.ssub,.prev,.skip,table.rt,h2,.hint')]
+    .map(x=>(x.getBoundingClientRect().bottom-top)*k).filter(v=>v>0).sort((a,b)=>a-b);
+  return {c,cuts};
+}
+async function buildPages(){
+  const box=document.createElement('div');
+  box.style.cssText='position:absolute;left:-12000px;top:0;width:880px;background:#fff;padding:8px';
+  box.innerHTML=headHTML()+$('allSteps').innerHTML;
+  document.body.appendChild(box);
+  try{
+    const pages=[]; let page=null,g=null,y=0,PW=0,PH=0,MX=0;
+    const newPage=()=>{page=document.createElement('canvas');page.width=PW;page.height=PH;g=page.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,PW,PH);pages.push(page);y=MX;};
+    for(const el of [...box.children]){
+      const {c,cuts}=await sectionCanvas(el);
+      if(!page){MX=Math.round(c.width*10/190);PW=c.width+2*MX;PH=Math.round(PW*297/210);newPage();}
+      const gap=Math.round(MX*0.5), bottom=PH-MX;
+      if(c.height<=PH-2*MX){ if(y+c.height>bottom) newPage(); g.drawImage(c,MX,y); y+=c.height+gap; continue; }
+      let sy=0;
+      while(sy<c.height-1){
+        if(bottom-y<MX*5) newPage();
+        let end=Math.min(c.height,sy+(bottom-y));
+        if(end<c.height){const ok=cuts.filter(v=>v>sy+20&&v+4<=end); if(ok.length) end=ok[ok.length-1]+4;}
+        const h=Math.max(1,Math.round(end-sy));
+        g.drawImage(c,0,sy,c.width,h,MX,y,c.width,h);
+        y+=h; sy+=h;
+        if(sy<c.height-1) newPage(); else y+=gap;
+      }
+    }
+    return pages;
+  } finally { box.remove(); }
+}
+async function buildPDF(){
+  const {jsPDF}=window.jspdf;
+  const pages=await buildPages();
+  const pdf=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+  pages.forEach((pg,i)=>{ if(i) pdf.addPage(); pdf.addImage(pg.toDataURL('image/jpeg',0.92),'JPEG',0,0,210,297); });
+  return pdf.output('blob');
+}
+let IMG_URLS=[];
+function closeImages(){ $('imgView').classList.add('hidden'); IMG_URLS.forEach(u=>URL.revokeObjectURL(u)); IMG_URLS=[]; $('imgs').innerHTML=''; document.body.style.overflow=''; }
+async function showImages(){
+  if(!R) return;
+  if(!window.html2canvas){ toast('이미지 기능을 불러오지 못했습니다. 인터넷 연결 후 페이지를 다시 열어주세요.'); return; }
+  const btn=$('imgbtn'); btn.disabled=true; const old=btn.textContent; btn.textContent='…';
+  try{
+    const pages=await buildPages();
+    const blobs=await Promise.all(pages.map(pg=>new Promise(r=>pg.toBlob(r,'image/jpeg',0.92))));
+    closeImages();
+    IMG_URLS=blobs.map(b=>URL.createObjectURL(b));
+    $('imgs').innerHTML=IMG_URLS.map((u,i)=>'<div class="pgno">'+(i+1)+' / '+IMG_URLS.length+' 페이지</div><img src="'+u+'" alt="풀이 '+(i+1)+'페이지">').join('');
+    $('imgView').classList.remove('hidden'); $('imgView').scrollTop=0; document.body.style.overflow='hidden';
+  } catch(e){ toast('이미지를 만들지 못했습니다: '+(e&&e.message||e)); }
+  finally{ btn.disabled=false; btn.textContent=old; }
+}
+async function savePDF(){
+  if(!R) return;
+  if(!window.jspdf||!window.html2canvas){ toast('PDF 기능을 불러오지 못했습니다. 인터넷 연결 후 페이지를 다시 열어주세요.'); return; }
+  const btn=$('pdf'); btn.disabled=true; const old=btn.textContent; btn.textContent='…';
+  try{
+    const blob=await buildPDF();
+    const d=new Date(); const fn='배합설계_풀이_'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'.pdf';
+    if(HAS_CLAUDE){
+      if(DL===undefined){ for(let i=0;i<20&&DL===undefined;i++) await new Promise(r=>setTimeout(r,500)); }
+      if(!DL){ toast('이 화면에서는 파일 저장이 막혀 있습니다. claude.ai에 로그인한 상태로 열거나 Claude 앱에서 열어주세요.',7000); return; }
+      try{ await DL.save({filename:fn,data:blob}); toast('PDF를 저장했습니다. 파일 앱에서 굿노트로 열어주세요.'); }
+      catch(e){ const c=e&&e.code;
+        if(c==='declined') toast('저장을 취소했습니다.');
+        else if(c==='rate_limited') toast('잠시 후 다시 눌러주세요.');
+        else toast('PDF를 저장하지 못했습니다.'+(c?' ('+c+')':'')); }
+    } else {
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fn; document.body.appendChild(a); a.click();
+      setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000); toast('PDF를 저장했습니다.');
+    }
+  } catch(e){ toast('PDF를 만들지 못했습니다: '+(e&&e.message||e)); }
+  finally{ btn.disabled=false; btn.textContent=old; }
+}
+
+/* ================= 텍스트(마크다운) 복사 ================= */
+function inl(el,plain){
+  const c=el.cloneNode(true);
+  c.querySelectorAll('.frac').forEach(fr=>{const [a,b]=[...fr.children].map(x=>inl(x,plain)); const w=x=>/[ +−\-×÷]/.test(x)?'('+x+')':x; fr.replaceWith(document.createTextNode(w(a)+'/'+w(b)));});
+  c.querySelectorAll('sub').forEach(x=>x.replaceWith(document.createTextNode('_'+x.textContent)));
+  c.querySelectorAll('sup').forEach(x=>x.replaceWith(document.createTextNode(x.textContent)));
+  if(!plain) c.querySelectorAll('.u').forEach(x=>x.replaceWith(document.createTextNode('**'+x.textContent.trim()+'**')));
+  return c.textContent.replace(/ /g,' ').replace(/[ \t]+/g,' ').trim();
+}
+function mdTable(rows){
+  if(!rows.length) return '';
+  const head='| '+rows[0].join(' | ')+' |', sep='|'+rows[0].map(()=>' --- |').join('');
+  return [head,sep,...rows.slice(1).map(r=>'| '+r.join(' | ')+' |')].join('\n');
+}
+function tableRows(t){ return [...t.rows].map(r=>[...r.cells].map(c=>c.textContent.replace(/\s+/g,' ').trim())); }
+function mtRows(t){ // 배합표: 2단 머리글을 한 줄로
+  const head=['굵은골재 최대치수(mm)','슬럼프(mm)','공기량(%)','W/C(%)','S/a(%)','W','C','S','G','CA'];
+  const last=t.rows[t.rows.length-1]; return [head,[...last.cells].map(c=>c.textContent.trim())];
+}
+function solutionText(plain){
+  const L=[]; const i=R.inp;
+  L.push((plain?'':'# ')+'콘크리트 배합설계 풀이');
+  L.push('f_ck '+T(i.fck)+' MPa · 노출등급 '+R.ex.g+' · '+(i.sUnknown?'표준편차 모름':'s '+T(i.s)+' MPa'+(i.nTest!==null?' ('+i.nTest+'회)':''))
+    +' · f28 = '+T(i.ra)+' + '+T(i.rb)+' B/W · Gmax '+i.gmax+' mm · 슬럼프 '+T(i.slump)+' mm · 공기량 '+T(i.air)+' % · 조립률 '+T(i.fm));
+  const box=document.createElement('div'); box.innerHTML=$('allSteps').innerHTML;
+  [...box.children].forEach(sec=>{
+    if(sec.classList.contains('stepsec')){
+      L.push(''); L.push((plain?'■ ':'## ')+inl(sec.querySelector('.stitle'),plain));
+      const note=sec.querySelector('.note');
+      [...note.children].forEach(ch=>{
+        const cl=ch.classList;
+        if(cl.contains('gap')){ L.push(''); return; }
+        if(cl.contains('eq')){
+          let t=inl(ch,plain);
+          if(cl.contains('h')) t=plain?'['+t+']':'### '+t;
+          else if(cl.contains('g')) t='(참고) '+t;
+          else if(cl.contains('i2')) t='    '+t; else if(cl.contains('i1')) t='  '+t;
+          L.push(t); return;
+        }
+        if(ch.tagName==='TABLE'&&cl.contains('ct')){ L.push(''); L.push(mdTable(tableRows(ch))); L.push(''); return; }
+        if(cl.contains('sumbox')){
+          const lbl=ch.querySelector('.lbl'); const rows=tableRows(ch.querySelector('table'));
+          L.push('⇒ '+(lbl?lbl.textContent+' ':'')+rows[0].map((h,k)=>h+' '+rows[1][k]).join(' | ')); return;
+        }
+        if(cl.contains('mtcap')){ L.push(''); L.push(plain?'['+ch.textContent+']':'**'+ch.textContent+'**'); return; }
+        if(cl.contains('mtwrap')){ L.push(mdTable(mtRows(ch.querySelector('table')))); return; }
+        if(cl.contains('mtnote')){ L.push(''); ch.innerHTML.split(/<br\s*\/?>/i).forEach(x=>{const d=document.createElement('div');d.innerHTML=x;L.push(d.textContent.trim());}); return; }
+        const t=inl(ch,plain); if(t) L.push(t);
+      });
+    } else {
+      const h=sec.querySelector('h2'), t=sec.querySelector('table');
+      if(h&&t){ L.push(''); L.push((plain?'■ ':'## ')+h.textContent.trim()); L.push(mdTable(tableRows(t))); }
+    }
+  });
+  return L.join('\n').replace(/\n{3,}/g,'\n\n')+'\n';
+}
+let TXT_PLAIN=false;
+function showText(){
+  if(!R) return;
+  $('txtArea').value=solutionText(TXT_PLAIN);
+  $('txtMode').textContent=TXT_PLAIN?'마크다운으로 보기':'일반 텍스트로 보기';
+  $('txtView').classList.remove('hidden'); document.body.style.overflow='hidden'; $('txtArea').scrollTop=0;
+}
+function closeText(){ $('txtView').classList.add('hidden'); document.body.style.overflow=''; }
+async function copyText(){
+  const ta=$('txtArea');
+  try{ await navigator.clipboard.writeText(ta.value); toast('복사했습니다. 붙여넣을 곳에서 붙여넣기 하세요.'); }
+  catch(e){ ta.focus(); ta.select(); try{ ta.setSelectionRange(0,ta.value.length); }catch(_){}
+    let ok=false; try{ ok=document.execCommand('copy'); }catch(_){}
+    toast(ok?'복사했습니다.':'자동 복사가 막혀 있습니다. 텍스트를 길게 눌러 "전체 선택" → "복사"를 눌러주세요.',6000); }
+}
+/* ================= 한 번에 풀이 UI ================= */
+const STEPS=[
+ {id:'s1',chip:'Step 1 배합강도',title:'Step 1. 배합강도 f<sub>cr</sub>',sub:'노출등급 → f_cd → f_cq = max(f_ck, f_cd) → f_cn = f_cq + T_n → f_cr (두 식 중 큰 값)',fn:renderS1},
+ {id:'s2',chip:'Step 2 W/B · 보정',title:'Step 2. 물-결합재비 · 잔골재율 · 단위수량',sub:'W/B는 작은 값 · 차이 = 목표 − 기준 · S/a는 더하기, W는 %라서 곱하기',fn:renderS2},
+ {id:'s3',chip:'Step 3 시험배합',title:'Step 3. 단위시멘트량 · 골재량',sub:'C = W ÷ (W/B) · 1000 L에서 물·시멘트·공기를 빼면 골재 부피',fn:R=>mixHTML(R.mix0,R.inp)},
+ {id:'s4',chip:'Step 4 시험비비기',title:'Step 4. 시험비비기',sub:'시험비비기 결과를 목표와 비교 · 표 2 규칙 그대로',fn:renderS4},
+ {id:'s5',chip:'Step 5 S/a 변경',title:'Step 5. S/a 변경',sub:'워커빌리티 개선 · S/a 1 %당 W 1.5 kg',fn:renderS5},
+ {id:'s6',chip:'Step 6 적정 W/B',title:'Step 6. 적정 W/B 선정',sub:'새 강도식으로 W/B 다시 결정 · W/B 0.05당 S/a 1 · W는 그대로',fn:renderS6},
+ {id:'s7',chip:'Step 7 현장배합',title:'Step 7. 현장배합',sub:'입도보정 → 표면수 보정',fn:renderS7},
+];
+const $=id=>document.getElementById(id);
+const IDS=['fck','Tn','s','nTest','ra','rb','gmax','ctype','slump','air','fm','aeP','rc','rs','rg','airSa','xSa','xW',
+  't1slump','t1air','t2dsa','t3a','t3b','fa','fb','fc','fd','mW','mC','mS','mG'];
+const CHKS=['sUnknown','t1on','t2on','t3on','manualSpec'];
+let expo='EF2', view='input', R=null, ERR='';
+
+function buildExpo(filter=''){
+  const box=$('expoList'); box.innerHTML=''; let lastCat='';
+  EXPO.forEach(e=>{
+    if(filter && !(e.cond+e.ex+e.g+e.cat).includes(filter)) return;
+    if(e.cat!==lastCat){const c=document.createElement('div');c.className='cat';c.textContent=e.cat;box.appendChild(c);lastCat=e.cat;}
+    const l=document.createElement('label'); if(e.g===expo) l.className='on';
+    l.innerHTML='<input type="radio" name="expo" '+(e.g===expo?'checked':'')+'><span class="gg">'+e.g+'</span><span>'+e.cond+'<span class="ex">예) '+e.ex+'</span></span>';
+    l.querySelector('input').addEventListener('change',()=>{expo=e.g;buildExpo($('expoSearch').value.trim());recalc();});
+    box.appendChild(l);
+  });
+}
+function read(){const o={expo};IDS.forEach(k=>o[k]=$(k).value);CHKS.forEach(k=>o[k]=$(k).checked);return o;}
+function load(v){expo=v.expo;IDS.forEach(k=>$(k).value=v[k]??'');CHKS.forEach(k=>$(k).checked=!!v[k]);$('expoSearch').value='';buildExpo();recalc();}
+function recalc(){
+  $('sBox').style.opacity=$('sUnknown').checked?.4:1;
+  $('specBox').style.display=$('manualSpec').checked?'grid':'none';
+  try{R=compute(read());ERR='';}catch(e){R=null;ERR=e.message;}
+  $('err0').textContent='';
+}
+function stepTitle(S){
+  if(S.id==='s5'&&R.t2.on&&R.t2.dsa!==undefined) return 'Step 5. S/a '+T(Math.abs(R.t2.dsa))+'% '+(R.t2.dsa>=0?'↑':'↓');
+  return S.title;
+}
+function renderAll(){
+  let h='';
+  STEPS.forEach(S=>{
+    h+='<div class="stepsec" id="sec-'+S.id+'"><div class="stitle">'+stepTitle(S)+'</div><div class="ssub">'+S.sub+'</div>'
+      +'<div class="note">'+S.fn(R)+'</div></div>';
+  });
+  h+=roundsHTML(R);
+  $('allSteps').innerHTML=h;
+}
+function renderNav(){
+  if(view==='input'){
+    $('prog').innerHTML='<button class="cur">조건 입력</button><button>전체 풀이</button>';
+    $('prog').querySelectorAll('button')[1].onclick=start;
+    $('back').classList.add('hidden'); $('pdf').classList.add('hidden'); $('imgbtn').classList.add('hidden'); $('txtbtn').classList.add('hidden'); $('go').textContent='풀이 시작 ▶'; $('pos').textContent='모든 조건 입력';
+  } else {
+    $('prog').innerHTML='<button class="done" data-x="in">조건 입력</button>'+STEPS.map(S=>'<button data-s="'+S.id+'">'+S.chip+'</button>').join('');
+    $('prog').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+      if(b.dataset.x==='in') edit(); else document.getElementById('sec-'+b.dataset.s).scrollIntoView({behavior:'smooth'});
+    });
+    $('back').classList.remove('hidden'); $('pdf').classList.remove('hidden'); $('imgbtn').classList.remove('hidden'); $('txtbtn').classList.remove('hidden'); $('go').textContent='▲'; $('pos').textContent='전체 풀이';
+  }
+}
+function start(){
+  recalc();
+  if(!R){ $('err0').textContent=ERR; $('err0').scrollIntoView({block:'center'}); return; }
+  view='all'; renderAll();
+  $('page0').classList.add('hidden'); $('pageAll').classList.remove('hidden');
+  renderNav(); window.scrollTo(0,0);
+}
+function edit(){
+  view='input'; $('page0').classList.remove('hidden'); $('pageAll').classList.add('hidden');
+  renderNav(); window.scrollTo(0,0);
+}
+document.addEventListener('input',e=>{if(e.target.id==='expoSearch'){buildExpo(e.target.value.trim());return;}recalc();});
+document.addEventListener('change',e=>{if(e.target.type==='checkbox')recalc();});
+$('go').onclick=()=>{ if(view==='input') start(); else window.scrollTo({top:0,behavior:'smooth'}); };
+$('back').onclick=edit;
+$('pdf').onclick=savePDF;
+$('imgbtn').onclick=showImages;
+$('txtbtn').onclick=showText;
+$('txtClose').onclick=closeText;
+$('txtCopy').onclick=copyText;
+$('txtMode').onclick=()=>{TXT_PLAIN=!TXT_PLAIN;showText();};
+$('imgClose').onclick=closeImages;
+$('btnEx').onclick=()=>load(EXAMPLE);
+$('btnClear').onclick=()=>load({expo:'EF2',gmax:'25',ctype:'ae',Tn:0,airSa:0.75,rc:3.15});
+load(EXAMPLE); renderNav();
+</script>
+</body>
+</html>
